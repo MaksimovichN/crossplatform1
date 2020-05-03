@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Maksimovich.Models;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Maksimovich.Controllers
 {
@@ -13,37 +14,30 @@ namespace Maksimovich.Controllers
     [ApiController]
     public class PlayersController : ControllerBase
     {
-        private readonly PlayerContext _context;
+        private readonly DBContext _context;
 
-        public PlayersController(PlayerContext context)
+        public PlayersController(DBContext context)
         {
             _context = context;
         }
 
         // GET: api/Players
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Player>>> GetPlayers()
+        public IEnumerable<Player> GetPlayers()
         {
-            return await _context.Players.ToListAsync();
+            return  _context.getAllPlayers();
         }
 
         // GET: api/Players/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Player>> GetPlayer(long id)
+        public Player GetPlayer(long id)
         {
-            var player = await _context.Players.FindAsync(id);
-
-            if (player == null)
-            {
-                return NotFound();
-            }
-
-            return player;
+            return _context.getPlayer(id);
         }
 
         // PUT: api/Players/5
-        // To protect from overposting attacks, please enable the specific properties you want to bind to, for
-        // more details see https://aka.ms/RazorPagesCRUD.
+        // To protect from overposting attacks, enable the specific properties you want to bind to, for
+        // more details, see https://go.microsoft.com/fwlink/?linkid=2123754.
         [HttpPut("{id}")]
         public async Task<IActionResult> PutPlayer(long id, Player player)
         {
@@ -74,28 +68,51 @@ namespace Maksimovich.Controllers
         }
 
         // POST: api/Players
-        // To protect from overposting attacks, please enable the specific properties you want to bind to, for
-        // more details see https://aka.ms/RazorPagesCRUD.
-        [HttpPost]
-        public async Task<ActionResult<Player>> PostPlayer(Player player)
+        // To protect from overposting attacks, enable the specific properties you want to bind to, for
+        // more details, see https://go.microsoft.com/fwlink/?linkid=2123754.
+        [HttpPost("toClub/{id}")]
+        [Authorize(Roles = "admin")]
+        public async Task<ActionResult<Player>> PostPlayer(Player player, long id)
         {
-            _context.Players.Add(player);
-            await _context.SaveChangesAsync();
+
+            var FC = await _context.FCs.FindAsync(id);
+
+            if (FC == null)
+                return BadRequest();
+
+            FC.Players.Add(player);
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException)
+            {
+                if (PlayerExists(player.Id))
+                {
+                    return Conflict();
+                }
+                else
+                {
+                    throw;
+                }
+            }
 
             return CreatedAtAction("GetPlayer", new { id = player.Id }, player);
         }
 
         // DELETE: api/Players/5
         [HttpDelete("{id}")]
+        [Authorize(Roles = "admin")]
         public async Task<ActionResult<Player>> DeletePlayer(long id)
         {
-            var player = await _context.Players.FindAsync(id);
+            var player = _context.getPlayer(id);
+
             if (player == null)
             {
                 return NotFound();
             }
 
-            _context.Players.Remove(player);
+            _context.FCs.Where(f => f.Players.FirstOrDefault(p => p.Id == id) != null).FirstOrDefault().Players.Remove(player);
             await _context.SaveChangesAsync();
 
             return player;
@@ -103,7 +120,7 @@ namespace Maksimovich.Controllers
 
         private bool PlayerExists(long id)
         {
-            return _context.Players.Any(e => e.Id == id);
+            return _context.getAllPlayers().Any(e => e.Id == id);
         }
     }
 }

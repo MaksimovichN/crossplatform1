@@ -14,7 +14,7 @@ namespace Maksimovich.Models
 
         public string getCoach()
         {
-            return "club's head coach is" + Coach;
+            return "club's head coach is " + Coach;
         }
     }
 }
