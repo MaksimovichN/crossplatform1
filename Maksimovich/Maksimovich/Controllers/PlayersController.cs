@@ -74,6 +74,8 @@ namespace Maksimovich.Controllers
         [Authorize(Roles = "admin")]
         public async Task<ActionResult<Player>> PostPlayer(Player player, long id)
         {
+            if(_context.getAllPlayers().FirstOrDefault(p=>p.Id==player.Id) != null)
+                return BadRequest();
 
             var FC = await _context.FCs.FindAsync(id);
 

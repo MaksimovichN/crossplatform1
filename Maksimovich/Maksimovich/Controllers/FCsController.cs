@@ -109,6 +109,9 @@ namespace Maksimovich.Controllers
         [Authorize(Roles = "admin")]
         public async Task<ActionResult<FC>> PostFC(FC fC)
         {
+            if (_context.FCs.FirstOrDefault(f => f.Id == fC.Id) != null)
+                return BadRequest();
+
             _context.FCs.Add(fC);
             await _context.SaveChangesAsync();
 
